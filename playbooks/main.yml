@@ -1,0 +1,10 @@
+---
+
+- name: Initialization of a new VM on the ProxmoxVE servers
+  hosts: proxmox
+  
+  roles:
+    - { role: roles/pve_config, tags: ['pve_config'] }
+    - { role: roles/dowload_img, tags: ['dowload_img'] }
+    - { role: roles/customize_img, tags: ['dowload_img'] }
+    - { role: roles/deploy_vm, tags: ['deploy_vm'] }

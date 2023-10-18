@@ -1,0 +1,7 @@
+#list of excluded folders
+.DS_Store
+.vscode
+.ssh
+
+#List of excluded files
+group_vars/all

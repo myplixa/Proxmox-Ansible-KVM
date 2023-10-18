@@ -1,0 +1,11 @@
+---
+
+- name: Starting the procedure for installing updates to the original Cloud-Init image
+  tags: dowload_img
+  ansible.builtin.shell:
+    cmd: "virt-customize -a {{ ext_storage }}/{{ img_name }} --update"
+
+- name: Install Gemu Agent to the original Cloud-Init image
+  tags: dowload_img
+  ansible.builtin.shell:
+    cmd: "virt-customize -a {{ ext_storage }}/{{ img_name }} --install qemu-guest-agent"
