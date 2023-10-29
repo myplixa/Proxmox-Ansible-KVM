@@ -5,7 +5,12 @@
   ansible.builtin.shell:
     cmd: "virt-customize -a {{ ext_storage }}/{{ img_name }} --update"
 
-- name: Install Gemu Agent to the original Cloud-Init image
+- name: Install Qemu Agent to the original Cloud-Init image
   tags: dowload_img
   ansible.builtin.shell:
     cmd: "virt-customize -a {{ ext_storage }}/{{ img_name }} --install qemu-guest-agent"
+
+- name: Important step so your clones get unique mac address / network details
+  tags: dowload_img
+  ansible.builtin.shell:
+    cmd: "virt-customize -a {{ ext_storage }}/{{ img_name }} --run-command '>/etc/machine-id'"
