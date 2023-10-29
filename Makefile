@@ -4,7 +4,7 @@ install:
 	ansible-galaxy collection install community.general
 
 run-all:
-	ansible-playbook -i inventory main.yml
+	ansible-playbook -i inventory playbooks/main.yml
 
 dowload-images:
 	ansible-playbook -i inventory playbooks/main.yml --tags dowload_img
