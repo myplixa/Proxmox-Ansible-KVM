@@ -26,5 +26,8 @@ vm_user_ssh_key: ''
 # Section with configuration internal and external Storage
 ext_storage: '/mnt/pve/nfs/template/iso'
 int_storage: 'local-zfs'
+
+# Section with configuration
 img_name: 'debian-11-generic-amd64.qcow2'
 img_url: 'https://cloud.debian.org/images/cloud/bullseye/latest/debian-11-generic-amd64.qcow2'
+vm_timezone: 'Europe/Moscow'

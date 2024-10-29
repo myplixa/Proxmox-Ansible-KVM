@@ -4,7 +4,7 @@
   hosts: proxmox
   
   roles:
-    - { role: roles/pve_config, tags: ['pve_config'] }
-    - { role: roles/dowload_img, tags: ['dowload_img'] }
-    - { role: roles/customize_img, tags: ['dowload_img'] }
-    - { role: roles/deploy_vm, tags: ['deploy_vm'] }
+    - { role: roles/configure, tags: ['configure'] }
+    - { role: roles/dowload, tags: ['dowload'] }
+    - { role: roles/customize, tags: ['dowload'] }
+    - { role: roles/deploy, tags: ['deploy'] }

@@ -1,0 +1,23 @@
+---
+
+- name: Check that the img file exists
+  tags: dowload
+  stat:
+    path: "{{ ext_storage }}/{{ img_name }}"
+  register: img_exists
+
+- name: Dowload cloud-init image
+  tags: dowload
+  ansible.builtin.get_url:
+    url: "{{ img_url }}"
+    dest: "{{ ext_storage }}"
+    mode: '0644'
+    force: true
+    timeout: 500
+  when: not img_exists.stat.exists
+  register: dowload_status
+
+- name: Display download status
+  tags: dowload
+  ansible.builtin.debug:
+    var: dowload_status

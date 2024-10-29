@@ -7,10 +7,10 @@ run-all:
 	ansible-playbook -i inventory playbooks/main.yml
 
 dowload-images:
-	ansible-playbook -i inventory playbooks/main.yml --tags dowload_img
+	ansible-playbook -i inventory playbooks/main.yml --tags dowload
 
 deploy-vm:
-	ansible-playbook -i inventory playbooks/main.yml --tags deploy_vm
+	ansible-playbook -i inventory playbooks/main.yml --tags deploy
 
 pve-config:
-	ansible-playbook -i inventory playbooks/main.yml --tags pve_config
+	ansible-playbook -i inventory playbooks/main.yml --tags config

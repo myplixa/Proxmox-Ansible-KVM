@@ -1,0 +1,24 @@
+# ---
+
+- name: Customize cloud-init image
+  tags:
+    - dowload
+    - customize
+  ansible.builtin.shell:
+    cmd: |
+        virt-customize -a {{ ext_storage }}/{{ img_name }} \
+        --update \
+        --install rng-tools,qemu-guest-agent \
+        --run-command "ln -sf /usr/share/zoneinfo/{{ vm_timezone }} /etc/localtime" \
+        --run-command "echo {{ vm_timezone }} > /etc/timezone" \
+        --run-command ">/etc/machine-id"
+  when: dowload_status.changed or img_exists.stat.exists
+  register: customize_status
+
+- name: Display cloud-init customize status
+  tags:
+    - dowload
+    - customize
+  ansible.builtin.debug:
+    var: customize_status.stdout_lines
+  when: customize_status.changed
