@@ -9,11 +9,12 @@ pve_token_secret: 'xxxxxxx-xxxxxx-xxxxx-xxxxx-xxxxxxx'
 # Section with configuration VM
 pve_node: 'pve_name_node'
 vm_name: 'vm_name'
+vm_count: '0'
 vm_cpu_type: 'Westmere'
 vm_sockets: '2'
 vm_core: '2'
 vm_ram: '2048'
-vm_network_bridge: 'vmbr1'
+vm_network_bridge: 'vmbr0'
 vm_description: 'This VM Deploy use Ansible'
 
 # Section with configuration User data for Cloud-Init configurations

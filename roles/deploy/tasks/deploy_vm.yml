@@ -1,0 +1,159 @@
+---
+
+- name: Check if VM with the specified name exists
+  tags: deploy
+  community.general.proxmox_vm_info:
+    api_host: "{{ pve_host }}"
+    api_user: "{{ pve_user }}"
+    api_token_id: "{{ pve_token_id }}"
+    api_token_secret: "{{ pve_token_secret }}"
+
+    node: "{{ pve_node }}"
+    name: "{{ current_vm_name }}"
+  register: existing_vms
+
+- name: Stop script if VM with specified name already exists
+  tags: deploy
+  ansible.builtin.fail:
+    msg: "VM with the name '{{ current_vm_name }}' already exists. VM ID: {{ item.vmid }}"
+  when: existing_vms.proxmox_vms[0].name == current_vm_name
+  loop: "{{ existing_vms.proxmox_vms }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Create VM Name - "{{ current_vm_name }}"
+  tags: deploy
+  register: vm_result
+  community.general.proxmox_kvm:
+    api_host: "{{ pve_host }}"
+    api_user: "{{ pve_user }}"
+    api_token_id: "{{ pve_token_id }}"
+    api_token_secret: "{{ pve_token_secret }}"
+
+    node: "{{ pve_node }}"
+    name: "{{ current_vm_name | default(Auto_Deploy_VM) }}"
+    ostype: l26
+    cpu: "{{ vm_cpu_type | default(Westmere) }}"
+    sockets: "{{ vm_sockets | default(1) }}"
+    cores: "{{ vm_core | default(2) }}"
+    machine: q35
+    memory: "{{ vm_ram | default(2048) }}"
+    ide:
+      ide0: "{{ int_storage }}:cloudinit,format=raw"
+    scsihw: virtio-scsi-single
+    # virtio:
+      # virtio0: "{{ int_storage }}:0,iothread=1,discard=on,import-from={{ ext_storage }}/{{ img_name }},format=raw"
+    net:
+      net0: "virtio,bridge={{ vm_network_bridge | default('vmbr1') }},firewall=0"
+    serial:
+      serial0: socket
+    vga: serial0
+    onboot: true
+    agent: "1"
+    description: "{{ vm_description | default('Ansible Deploy') }}"
+
+- name: Importing a cloud-init disk image into a VM Name - "{{ current_vm_name }}", VM ID - "{{ vm_result.vmid }}"
+  tags: deploy
+  ansible.builtin.shell:
+    cmd: "qm importdisk {{ vm_result.vmid }} {{ ext_storage }}/{{ img_name }} {{ int_storage }} --format raw"
+
+- name: Connecting a cloned cloud-init disk to a VM Name - "{{ current_vm_name }}", VM ID - "{{ vm_result.vmid }}"
+  tags: deploy
+  ansible.builtin.shell:
+    cmd: "qm set {{ vm_result.vmid }} --scsihw virtio-scsi-pci --virtio0 {{ int_storage }}:vm-{{ vm_result.vmid }}-disk-0,iothread=on,aio=native"
+
+- name: Set the boot disk VM Name - "{{ current_vm_name }}", VM ID - "{{ vm_result.vmid }}"
+  tags: deploy
+  community.general.proxmox_kvm:
+    api_host: "{{ pve_host }}"
+    api_user: "{{ pve_user }}"
+    api_token_id: "{{ pve_token_id }}"
+    api_token_secret: "{{ pve_token_secret }}"
+
+    node: "{{ pve_node }}"
+    vmid: "{{ vm_result.vmid }}"
+    boot: c
+    bootdisk: virtio0
+    update: true
+
+- name: Resize VM disk for VM Name - "{{ current_vm_name }}", VM ID - "{{ vm_result.vmid }}"
+  tags: deploy
+  community.general.proxmox_disk:
+    api_host: "{{ pve_host }}"
+    api_user: "{{ pve_user }}"
+    api_token_id: "{{ pve_token_id }}"
+    api_token_secret: "{{ pve_token_secret }}"
+
+    vmid: "{{ vm_result.vmid }}"
+    disk: virtio0
+    size: +8G
+    state: resized
+
+- name: Configure Cloud-Init VM Name - "{{ current_vm_name }}", VM ID - "{{ vm_result.vmid }}"
+  tags: deploy
+  community.general.proxmox_kvm:
+    api_host: "{{ pve_host }}"
+    api_user: "{{ pve_user }}"
+    api_token_id: "{{ pve_token_id }}"
+    api_token_secret: "{{ pve_token_secret }}"
+
+    node: "{{ pve_node }}"
+    vmid: "{{ vm_result.vmid }}"
+    ciuser: "{{ vm_user_name }}"
+    cipassword: "{{ vm_user_pass }}"
+    searchdomains: "{{ vm_domain | default('ipa.local.corp') }}"
+    sshkeys: "{{ vm_user_ssh_key }}"
+    ipconfig:
+      ipconfig0: "ip={{ vm_ipconfig | default('dhcp') }}"
+    update: true
+
+- name: Start VM Name - "{{ current_vm_name }}", VM ID - "{{ vm_result.vmid }}"
+  tags: deploy
+  community.general.proxmox_kvm:
+    api_host: "{{ pve_host }}"
+    api_user: "{{ pve_user }}"
+    api_token_id: "{{ pve_token_id }}"
+    api_token_secret: "{{ pve_token_secret }}"
+
+    node: "{{ pve_node }}"
+    vmid: "{{ vm_result.vmid }}"
+    state: started
+
+- name: Wait for VM to be running
+  tags: deploy
+  community.general.proxmox_vm_info:
+    api_host: "{{ pve_host }}"
+    api_user: "{{ pve_user }}"
+    api_token_id: "{{ pve_token_id }}"
+    api_token_secret: "{{ pve_token_secret }}"
+
+    node: "{{ pve_node }}"
+    vmid: "{{ vm_result.vmid }}"
+    network: true
+  register: vm_info
+  until: "vm_info.proxmox_vms is defined and vm_info.proxmox_vms[0].status == 'running'"
+  retries: 10
+  delay: 15
+    
+- name: Extract network details for eth0
+  tags: deploy
+  ansible.builtin.set_fact:
+    vm_network_info: "{{ {
+        'hardware-address': (vm_info.proxmox_vms[0].network | selectattr('name', 'equalto', 'eth0') | map(attribute='hardware-address') | list | first),
+        'ip-addresses': (vm_info.proxmox_vms[0].network | selectattr('name', 'equalto', 'eth0') | map(attribute='ip-addresses') | list | first)
+      } }}"
+
+- name: Show VM IP
+  tags: deploy
+  ansible.builtin.debug:
+    msg: |
+      VM Name: {{ current_vm_name }}
+      VM ID: {{ vm_result.vmid }}
+      Network Details:
+        Hardware Address: {{ vm_network_info['hardware-address'] }}
+        IP Addresses:
+          {% for ip in vm_network_info['ip-addresses'] %}
+          - IP Address: {{ ip['ip-address'] }}
+            Type: {{ ip['ip-address-type'] }}
+            Prefix: {{ ip['prefix'] }}
+          {% endfor %}
